@@ -1,7 +1,21 @@
+const CACHE_STATIC_NAME = 'static';
+const CACHE_STATIC_VERSION = 'v1';
+
+const CACHE_DYNAMIC_NAME = 'dynamic';
+const CACHE_DYNAMIC_VERSION = 'v1';
+
+function getStaticCacheName() {
+  return `${CACHE_STATIC_NAME}-${CACHE_STATIC_VERSION}`;
+}
+
+function getDynamicCacheName() {
+  return `${CACHE_DYNAMIC_NAME}-${CACHE_DYNAMIC_VERSION}`;
+}
+
 self.addEventListener('install', function(event) {
   console.log('[Service Worker] Installing Service Worker ...', event);
   event.waitUntil(
-    caches.open('static').then((cache) => {
+    caches.open(getStaticCacheName()).then((cache) => {
       console.log('[Service Worker] Precaching App Shell');
       cache.addAll([
         '/',
@@ -18,13 +32,24 @@ self.addEventListener('install', function(event) {
         'https://fonts.googleapis.com/icon?family=Material+Icons',
         'https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css'
       ]);
-      cache.add('/src/js/app.js');
     })
   );
 });
 
 self.addEventListener('activate', function(event) {
   console.log('[Service Worker] Activating Service Worker ....', event);
+  event.waitUntil(
+    caches.keys().then((keyList) => {
+      return Promise.all(
+        keyList.map((key) => {
+          if (key !== getStaticCacheName() && key !== getDynamicCacheName()) {
+            console.log('[Service Worker] Removing old cache', key);
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
   return self.clients.claim();
 });
 
@@ -34,11 +59,11 @@ self.addEventListener('fetch', function(event) {
       if (response) {
         return response;
       } else {
-        return fetch(event.response)
+        return fetch(event.request)
           .then((res) => {
-            return caches.open('dynamic').then((cache) => {
+            return caches.open(getDynamicCacheName()).then((cache) => {
               cache.put(event.request.url, res.clone());
-              return res;
+              return res.clone();
             });
           })
           .catch((err) => {});
