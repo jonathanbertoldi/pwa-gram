@@ -1,8 +1,8 @@
 const CACHE_STATIC_NAME = 'static';
-const CACHE_STATIC_VERSION = 'v1';
+const CACHE_STATIC_VERSION = 'v6';
 
 const CACHE_DYNAMIC_NAME = 'dynamic';
-const CACHE_DYNAMIC_VERSION = 'v1';
+const CACHE_DYNAMIC_VERSION = 'v3';
 
 function getStaticCacheName() {
   return `${CACHE_STATIC_NAME}-${CACHE_STATIC_VERSION}`;
@@ -20,6 +20,7 @@ self.addEventListener('install', function(event) {
       cache.addAll([
         '/',
         '/index.html',
+        '/offline.html',
         '/src/js/app.js',
         '/src/js/feed.js',
         '/src/js/promise.js',
@@ -66,7 +67,11 @@ self.addEventListener('fetch', function(event) {
               return res.clone();
             });
           })
-          .catch((err) => {});
+          .catch((err) => {
+            return caches.open(getStaticCacheName()).then((cache) => {
+              return cache.match('/offline.html');
+            });
+          });
       }
     })
   );
