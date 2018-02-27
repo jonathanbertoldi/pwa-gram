@@ -30,6 +30,12 @@ shareImageButton.addEventListener('click', openCreatePostModal);
 
 closeCreatePostModalButton.addEventListener('click', closeCreatePostModal);
 
+function clearCards() {
+  while(sharedMomentsArea.hasChildNodes()) {
+    sharedMomentsArea.removeChild(sharedMomentsArea.lastChild);
+  }
+}
+
 // currently not in use, shows caching on user demand
 function onSaveButtonClick() {
   console.log('clicked');
@@ -72,10 +78,30 @@ function createCard() {
   sharedMomentsArea.appendChild(cardWrapper);
 }
 
-fetch('https://httpbin.org/get')
+const url = 'https://httpbin.org/get';
+let networkMessageReceived = false;
+
+fetch(url)
   .then(function(res) {
     return res.json();
   })
   .then(function(data) {
+    networkMessageReceived = true;
+    clearCards();
     createCard();
   });
+
+if ('caches' in window) {
+  caches.match(url)
+    .then(response => {
+      if (response) {
+        return response.json()
+      }
+    })
+    .then(data => {
+      if (!networkMessageReceived) {
+        clearCards();
+        createCard();
+      }
+    })
+}
