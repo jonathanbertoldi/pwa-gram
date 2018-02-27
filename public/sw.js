@@ -1,3 +1,6 @@
+importScripts('/src/js/idb.js');
+importScripts('/src/js/utility.js');
+
 const CACHE_STATIC_NAME = 'static';
 const CACHE_STATIC_VERSION = 'v7';
 
@@ -10,6 +13,7 @@ const STATIC_FILES = [
   '/offline.html',
   '/src/js/app.js',
   '/src/js/feed.js',
+  '/src/js/idb.js',
   '/src/js/promise.js',
   '/src/js/fetch.js',
   '/src/js/material.min.js',
@@ -20,6 +24,16 @@ const STATIC_FILES = [
   'https://fonts.googleapis.com/icon?family=Material+Icons',
   'https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css'
 ];
+
+// function trimCache(cacheName, maxItems) {
+//   caches.open(cacheName).then((cache) => {
+//     return cache.keys().then((keys) => {
+//       if (keys.length > maxItems) {
+//         cache.delete(keys[0]).then(trimCache(cacheName, maxItems));
+//       }
+//     });
+//   });
+// }
 
 function getStaticCacheName() {
   return `${CACHE_STATIC_NAME}-${CACHE_STATIC_VERSION}`;
@@ -120,15 +134,20 @@ function isInArray(string, array) {
 
 // cache then network strategy
 self.addEventListener('fetch', (event) => {
-  const url = 'https://httpbin.org/get';
+  const url = 'https://pwagram-a463c.firebaseio.com/posts';
 
   if (event.request.url.indexOf(url) > -1) {
     event.respondWith(
-      caches.open(getDynamicCacheName()).then((cache) => {
-        return fetch(event.request).then((res) => {
-          cache.put(event.request, res.clone());
-          return res;
+      fetch(event.request).then((res) => {
+        let clonedRes = res.clone();
+
+        clonedRes.json().then((data) => {
+          for (let key in data) {
+            writeData('posts', data[key]);
+          }
         });
+
+        return res;
       })
     );
   } else if (isInArray(event.request.url, STATIC_FILES)) {
@@ -144,13 +163,14 @@ self.addEventListener('fetch', (event) => {
           return fetch(event.request)
             .then((res) => {
               return caches.open(getDynamicCacheName()).then((cache) => {
+                // trimCache(getDynamicCacheName(), 10);
                 cache.put(event.request.url, res.clone());
                 return res.clone();
               });
             })
             .catch((err) => {
               return caches.open(getStaticCacheName()).then((cache) => {
-                if (event.request.url.indexOf('/help')) {
+                if (event.request.headers.get('accept').includes('text/html')) {
                   return cache.match('/offline.html');
                 }
               });
