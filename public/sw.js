@@ -192,23 +192,31 @@ self.addEventListener('sync', (event) => {
 
     event.waitUntil(
       readAllData('sync-posts').then((data) => {
-        fetch('https://pwagram-a463c.firebaseio.com/posts.json', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json'
-          },
-          body: JSON.stringify({
-            id: new Date().toISOString(),
-            title: titleInput.value,
-            location: locationInput.value,
-            image:
-              'https://firebasestorage.googleapis.com/v0/b/pwagram-a463c.appspot.com/o/sf-boat.jpg?alt=media&token=58b7b176-8828-4d16-af31-67ffce60263a'
-          }).then((res) => {
-            console.log('Sent data', res);
-            updateUI();
+        for (let dt of data) {
+          fetch('https://pwagram-a463c.firebaseio.com/posts.json', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json'
+            },
+            body: JSON.stringify({
+              id: dt.id,
+              title: dt.title,
+              location: dt.location,
+              image:
+                'https://firebasestorage.googleapis.com/v0/b/pwagram-a463c.appspot.com/o/sf-boat.jpg?alt=media&token=58b7b176-8828-4d16-af31-67ffce60263a'
+            })
           })
-        });
+            .then((res) => {
+              console.log('Sent data', res);
+              if (res.ok) {
+                deleteItemFromData('sync-posts', dt.id);
+              }
+            })
+            .catch((err) => {
+              console.log('Error while sending data', err);
+            });
+        }
       })
     );
   }
